@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      - GMGN_API_KEY=${GMGN_API_KEY}
+      - GMGN_API_SECRET=${GMGN_API_SECRET}
+      - DEXSCREENER_URL=${DEXSCREENER_URL}
+      - DATABASE_URL=${DATABASE_URL}
