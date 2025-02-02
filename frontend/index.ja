@@ -1,0 +1,35 @@
+import { useEffect, useState } from "react";
+import { getTokenPrice } from "../api/trading";
+
+const IndexPage = () => {
+  const [tokens, setTokens] = useState([]);
+  const [prices, setPrices] = useState({});
+
+  useEffect(() => {
+    // Fetch token list and prices
+    // Example: setTokens([{ address: "token_address", symbol: "TOKEN" }]);
+    // Then fetch prices
+    tokens.forEach(async (token) => {
+      const price = await getTokenPrice(token.address);
+      setPrices((prevPrices) => ({
+        ...prevPrices,
+        [token.address]: price,
+      }));
+    });
+  }, [tokens]);
+
+  return (
+    <div>
+      <h1>Token List</h1>
+      <ul>
+        {tokens.map((token) => (
+          <li key={token.address}>
+            {token.symbol}: {prices[token.address] || "Loading..."}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
+export default IndexPage;
