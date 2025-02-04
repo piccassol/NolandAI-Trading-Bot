@@ -1,7 +1,7 @@
 import Layout from "./layout"
 import { TokenTable } from "./components/token-table"
 import { TokenChart } from "./components/token-chart"
-import { Rocket } from "react-icons/fa"
+import { Rocket } from "lucide-react" // Changed to use lucide-react
 
 export default function Page() {
   return (
@@ -19,5 +19,4 @@ export default function Page() {
     </Layout>
   )
 }
-
 
