@@ -170,6 +170,79 @@ export default function Dashboard() {
           </Card>
         </div>
       </div>
+      
+      {/* Solana Section */}
+      <div>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-xl font-medium">Solana (SOL/USD)</h2>
+          <div className="flex space-x-2">
+            <Button variant="ghost" size="icon">
+              <Eye className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon">
+              <Trash2 className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon">
+              <Refresh className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-6">
+          <Card className="bg-[#1E2530] p-6">
+            <div className="relative flex aspect-square items-center justify-center">
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="text-sm text-gray-400">Number of assets</div>
+                  <div className="text-2xl font-medium">10</div>
+                </div>
+              </div>
+              <svg className="h-full w-full -rotate-90" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="45" fill="none" stroke="#2A2F3A" strokeWidth="10" strokeLinecap="round" />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="45"
+                  fill="none"
+                  stroke="#3DBAB6"
+                  strokeWidth="10"
+                  strokeLinecap="round"
+                  strokeDasharray="283"
+                  strokeDashoffset="70"
+                />
+              </svg>
+            </div>
+          </Card>
+
+          <Card className="bg-[#1E2530] p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-medium">$500,000.00</div>
+                <div className="text-sm text-green-500">+5.00%</div>
+              </div>
+              <div className="text-sm text-gray-400">
+                <div>≈10,000 SOL</div>
+                <div className="text-green-500">+2.50%</div>
+              </div>
+            </div>
+            <div className="h-[200px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={data}>
+                  <XAxis dataKey="date" stroke="#4B5563" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis
+                    stroke="#4B5563"
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value) => `$${value.toLocaleString()}`}
+                  />
+                  <Line type="monotone" dataKey="value" stroke="#3DBAB6" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        </div>
+      </div>
     </div>
   )
 }
