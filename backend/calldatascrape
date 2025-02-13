@@ -1,0 +1,61 @@
+from fastapi import FastAPI, BackgroundTasks
+import requests
+from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+import time
+import tweepy
+
+app = FastAPI()
+
+# Scrape AssetDash
+def scrape_assetdash():
+    url = "https://www.assetdash.com/"
+    headers = {"User-Agent": "Mozilla/5.0"}
+    response = requests.get(url, headers=headers)
+    soup = BeautifulSoup(response.text, "html.parser")
+    
+    assets = []
+    for item in soup.select(".asset-item-class"):  # Update with actual class name
+        name = item.select_one(".asset-name-class").text.strip()
+        price = item.select_one(".asset-price-class").text.strip()
+        assets.append({"name": name, "price": price})
+    
+    return assets
+
+# Scrape X.com (Twitter) using Selenium
+TWITTER_USERS = ["mobyagent", "whalewatch"]
+
+def scrape_twitter():
+    options = webdriver.ChromeOptions()
+    options.add_argument("--headless")
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    
+    tweets = {}
+    for user in TWITTER_USERS:
+        url = f"https://twitter.com/{user}"
+        driver.get(url)
+        time.sleep(5)  # Let page load
+        soup = BeautifulSoup(driver.page_source, "html.parser")
+        tweet_texts = [tweet.text for tweet in soup.select("article div span")]  # Adjust selector
+        tweets[user] = tweet_texts[:5]  # Store latest 5 tweets
+    
+    driver.quit()
+    return tweets
+
+# API Endpoints
+@app.get("/scrape/assetdash")
+def get_assetdash():
+    return {"assets": scrape_assetdash()}
+
+@app.get("/scrape/twitter")
+def get_twitter():
+    return {"tweets": scrape_twitter()}
+
+@app.get("/scrape/all")
+def scrape_all():
+    return {
+        "assetdash": scrape_assetdash(),
+        "twitter": scrape_twitter()
+    }
