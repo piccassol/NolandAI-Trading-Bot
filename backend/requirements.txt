@@ -1,0 +1,6 @@
+twscrape==0.11.2
+requests==2.31.0
+beautifulsoup4==4.12.3
+textblob==0.18.0.post0
+asyncio==3.4.3
+flask==3.0.3  # If using Flask for API
