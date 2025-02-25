@@ -1,0 +1,19 @@
+# Backend
+Backend/__pycache__/
+Backend/*.pyc
+Backend/venv/
+
+# Frontend
+frontend/node_modules/
+frontend/.vercel/
+frontend/build/
+frontend/dist/
+frontend/.env.local
+
+# Environment files
+.env
+
+# IDE/Editor files
+.DS_Store
+*.swp
+*.swo
