@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from services.dexscreener import get_token_info
+from ..services.dexscreener import get_token_info
 
 router = APIRouter()
 

@@ -1,5 +1,5 @@
 import requests
-from config import DEXSCREENER_URL
+from ..config import DEXSCREENER_URL
 
 def get_token_info(token_address: str):
     url = f"{DEXSCREENER_URL}{token_address}"

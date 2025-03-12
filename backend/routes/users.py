@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
-from fastapi.security import OAuth2PasswordBearer
-from models.user import User
-from services.auth import authenticate_user
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from ..models.user import User
+from ..services.auth import authenticate_user
 
 router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")

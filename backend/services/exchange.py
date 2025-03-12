@@ -1,5 +1,5 @@
 import requests
-from config import GMGN_API_KEY, GMGN_API_SECRET
+from ..config import GMGN_API_KEY, GMGN_API_SECRET
 
 GMGN_API_URL = "https://api.gmgn.ai/v1"
 

@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
-from models.user import User
+from ..models.user import User
 
 SECRET_KEY = "your_secret_key"
 ALGORITHM = "HS256"

@@ -1,5 +1,7 @@
 from fastapi import FastAPI, HTTPException
-from routes import trading, prices, users
+from .routes import trading, prices, users
+from .config import GMGN_API_KEY, GMGN_API_SECRET, 
+DEXSCREENER_URL, DB_URL
 import tweepy
 import discord
 from discord.ext import commands, tasks

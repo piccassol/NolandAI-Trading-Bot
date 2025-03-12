@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from services.exchange import place_order
+from ..services.exchange import place_order
 
 router = APIRouter()
 
