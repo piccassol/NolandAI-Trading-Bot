@@ -1,6 +1,10 @@
-twscrape==0.11.2
+fastapi==0.110.0
+uvicorn==0.29.0
 requests==2.31.0
 beautifulsoup4==4.12.3
 textblob==0.18.0.post0
+twscrape==0.11.2
 asyncio==3.4.3
-flask==3.0.3  # If using Flask for API
+flask==3.0.3  # Only if Flask is actually being used
+python-dotenv==1.0.1
+psycopg2-binary==2.9.9  # PostgreSQL database connection
