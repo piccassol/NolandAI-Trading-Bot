@@ -1,73 +1,50 @@
-from fastapi import FastAPI, HTTPException
-from routes import trading, prices, users
-import tweepy
-import discord
-from discord.ext import commands, tasks
 import os
-import requests
 from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException
+import requests
+import psycopg2
 
-# Load Environment Variables
+# Load environment variables
 load_dotenv()
 
-# Initialize FastAPI
 app = FastAPI()
 
-# Include Trading Bot Routes
-app.include_router(trading.router, prefix="/trade", tags=["Trading"])
-app.include_router(prices.router, prefix="/prices", tags=["Prices"])
-app.include_router(users.router, prefix="/users", tags=["Users"])
+# GMGN Solana Trading API Endpoint (No API Key Required)
+GMGN_SWAP_URL = "https://gmgn.ai/defi/router/v1/sol/tx/get_swap_route?token_in_address={inputToken}&token_out_address={outputToken}&in_amount={amount}&from_address={fromAddress}&slippage={slippage}"
 
-@app.get("/")
-def home():
-    return {"message": "Welcome to NolandAI, your Solana trading bot API!"}
+# Dexscreener API URL for Solana token info
+DEXSCREENER_URL = "https://api.dexscreener.com//token-profiles/latest/v1"
 
-# --------------- Twitter Integration ---------------
-TWITTER_CONSUMER_KEY = os.getenv("TWITTER_CONSUMER_KEY")
-TWITTER_CONSUMER_SECRET = os.getenv("TWITTER_CONSUMER_SECRET")
-TWITTER_ACCESS_TOKEN = os.getenv("TWITTER_ACCESS_TOKEN")
-TWITTER_ACCESS_SECRET = os.getenv("TWITTER_ACCESS_TOKEN_SECRET")
+# Database connection URL for PostgreSQL
+DB_URL = os.getenv("DATABASE_URL")
 
-auth = tweepy.OAuthHandler(TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET)
-auth.set_access_token(TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET)
-twitter_api = tweepy.API(auth)
-
-@app.post("/tweet/")
-def send_tweet(message: str):
-    """Posts a tweet via API"""
+# Database connection
+def get_db_connection():
     try:
-        twitter_api.update_status(message)
-        return {"status": "success", "message": "Tweet sent successfully!"}
+        conn = psycopg2.connect(DB_URL)
+        return conn
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        raise HTTPException(status_code=500, detail=f"Database connection error: {str(e)}")
 
-# --------------- Discord Bot Integration ---------------
-DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
-DISCORD_CHANNEL_ID = int(os.getenv("DISCORD_CHANNEL_ID"))  # Replace with actual channel ID
+@app.get("/status")
+def read_root():
+    return {"message": "GMGN Trading API Server is Running!"}
 
-intents = discord.Intents.default()
-intents.messages = True
-bot = commands.Bot(command_prefix="!", intents=intents)
-
-@bot.event
-async def on_ready():
-    print(f"NolandAI is online as {bot.user}")
-    auto_post.start()  # Starts automated Discord posting
-
-@tasks.loop(hours=1)
-async def auto_post():
-    """Automatically posts tweets to Discord every hour"""
-    channel = bot.get_channel(DISCORD_CHANNEL_ID)
-    if channel:
-        tweet = "🚀 NolandAI Market Update! Stay tuned for trading insights! #AI"
-        twitter_api.update_status(tweet)  # Post to Twitter
-        await channel.send(f"📢 {tweet}")  # Post to Discord
-
-@bot.command()
-async def tweet(ctx, *, message: str):
-    """Allows Discord users to send tweets"""
-    twitter_api.update_status(message)
-    await ctx.send(f"Tweet sent: {message}")
+# Endpoint to fetch swap route
+@app.get("/swap")
+def get_swap_route(inputToken: str, outputToken: str, amount: int, fromAddress: str, slippage: float):
+    url = GMGN_SWAP_URL.format(
+        inputToken=inputToken,
+        outputToken=outputToken,
+        amount=amount,
+        fromAddress=fromAddress,
+        slippage=slippage
+    )
+    response = requests.get(url)
+    if response.status_code != 200:
+        raise HTTPException(status_code=response.status_code, detail="Error fetching swap route")
+    return response.json()
 
 if __name__ == "__main__":
-    bot.run(DISCORD_BOT_TOKEN)
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
