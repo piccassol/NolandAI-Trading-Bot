@@ -1,75 +1,178 @@
-from fastapi import FastAPI, HTTPException
-from .routes import trading, prices, users
-from .config import GMGN_API_KEY, GMGN_API_SECRET, 
-DEXSCREENER_URL, DB_URL
-import tweepy
-import discord
-from discord.ext import commands, tasks
 import os
-import requests
 from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
-# Load Environment Variables
+# Load environment variables
 load_dotenv()
 
-# Initialize FastAPI
 app = FastAPI()
 
-# Include Trading Bot Routes
-app.include_router(trading.router, prefix="/trade", tags=["Trading"])
-app.include_router(prices.router, prefix="/prices", tags=["Prices"])
-app.include_router(users.router, prefix="/users", tags=["Users"])
+# GMGN Solana Trading API Endpoint (No API Key Required)
+GMGN_SWAP_URL = "https://gmgn.ai/defi/router/v1/sol/tx/get_swap_route?token_in_address={inputToken}&token_out_address={outputToken}&in_amount={amount}&from_address={fromAddress}&slippage={slippage}"
 
-@app.get("/")
-def home():
-    return {"message": "Welcome to NolandAI, your Solana trading bot API!"}
+# Dexscreener API URL for Solana token info
+DEXSCREENER_URL = "https://api.dexscreener.com//token-profiles/latest/v1"
 
-# --------------- Twitter Integration ---------------
-TWITTER_CONSUMER_KEY = os.getenv("TWITTER_CONSUMER_KEY")
-TWITTER_CONSUMER_SECRET = os.getenv("TWITTER_CONSUMER_SECRET")
-TWITTER_ACCESS_TOKEN = os.getenv("TWITTER_ACCESS_TOKEN")
-TWITTER_ACCESS_SECRET = os.getenv("TWITTER_ACCESS_TOKEN_SECRET")
+# Database connection URL from environment variables
+DB_URL = os.getenv("DATABASE_URL")
 
-auth = tweepy.OAuthHandler(TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET)
-auth.set_access_token(TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET)
-twitter_api = tweepy.API(auth)
-
-@app.post("/tweet/")
-def send_tweet(message: str):
-    """Posts a tweet via API"""
+# Database connection function
+def get_db_connection():
     try:
-        twitter_api.update_status(message)
-        return {"status": "success", "message": "Tweet sent successfully!"}
+        conn = psycopg2.connect(DB_URL, options="-c search_path=nolandai_trading", cursor_factory=RealDictCursor)
+        return conn
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        raise HTTPException(status_code=500, detail=f"Database connection error: {str(e)}")
 
-# --------------- Discord Bot Integration ---------------
-DISCORD_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
-DISCORD_CHANNEL_ID = int(os.getenv("DISCORD_CHANNEL_ID"))  # Replace with actual channel ID
+@app.get("/status")
+def read_root():
+    return {"message": "GMGN Trading API Server is Running!"}
 
-intents = discord.Intents.default()
-intents.messages = True
-bot = commands.Bot(command_prefix="!", intents=intents)
+# Endpoint to fetch swap route
+@app.get("/swap")
+def get_swap_route(inputToken: str, outputToken: str, amount: int, fromAddress: str, slippage: float):
+    url = GMGN_SWAP_URL.format(
+        inputToken=inputToken,
+        outputToken=outputToken,
+        amount=amount,
+        fromAddress=fromAddress,
+        slippage=slippage
+    )
+    response = requests.get(url)
+    if response.status_code != 200:
+        raise HTTPException(status_code=response.status_code, detail="Error fetching swap route")
+    return response.json()
 
-@bot.event
-async def on_ready():
-    print(f"NolandAI is online as {bot.user}")
-    auto_post.start()  # Starts automated Discord posting
+# Endpoint to test database connection
+@app.get("/db-test")
+def test_db():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT schema_name FROM information_schema.schemata WHERE schema_name = 'nolandai_trading';")
+        schema_exists = cur.fetchone()
+        cur.close()
+        conn.close()
 
-@tasks.loop(hours=1)
-async def auto_post():
-    """Automatically posts tweets to Discord every hour"""
-    channel = bot.get_channel(DISCORD_CHANNEL_ID)
-    if channel:
-        tweet = "🚀 NolandAI Market Update! Stay tuned for trading insights! #AI"
-        twitter_api.update_status(tweet)  # Post to Twitter
-        await channel.send(f"📢 {tweet}")  # Post to Discord
+        if schema_exists:
+            return {"message": "Connected to PostgreSQL with nolandai_trading schema!"}
+        else:
+            return {"message": "Schema nolandai_trading does not exist!"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database query error: {str(e)}")
 
-@bot.command()
-async def tweet(ctx, *, message: str):
-    """Allows Discord users to send tweets"""
-    twitter_api.update_status(message)
-    await ctx.send(f"Tweet sent: {message}")
+# =============================
+# 🚀 User Management Endpoints 🚀
+# =============================
+
+# Create users table if it doesn't exist
+@app.on_event("startup")
+def create_users_table():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS nolandai_trading.users (
+                id SERIAL PRIMARY KEY,
+                username TEXT NOT NULL,
+                balance DECIMAL DEFAULT 0.0
+            );
+        """)
+        conn.commit()
+    except Exception as e:
+        print(f"Error creating users table: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+# ✅ Get all users
+@app.get("/users")
+def get_users():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT * FROM nolandai_trading.users;")
+        users = cur.fetchall()
+        return {"users": users}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database query error: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+# ✅ Create a new user
+@app.post("/users")
+def create_user(username: str, balance: float = 0.0):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("INSERT INTO nolandai_trading.users (username, balance) VALUES (%s, %s) RETURNING id;",
+                    (username, balance))
+        new_id = cur.fetchone()[0]
+        conn.commit()
+        return {"id": new_id, "username": username, "balance": balance}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database insert error: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+# ✅ Get a user by ID
+@app.get("/users/{user_id}")
+def get_user(user_id: int):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT * FROM nolandai_trading.users WHERE id = %s;", (user_id,))
+        user = cur.fetchone()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        return user
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database query error: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+# ✅ Update a user's balance
+@app.put("/users/{user_id}")
+def update_user_balance(user_id: int, balance: float):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("UPDATE nolandai_trading.users SET balance = %s WHERE id = %s RETURNING id;",
+                    (balance, user_id))
+        updated_id = cur.fetchone()
+        if not updated_id:
+            raise HTTPException(status_code=404, detail="User not found")
+        conn.commit()
+        return {"id": user_id, "balance": balance}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database update error: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+# ✅ Delete a user
+@app.delete("/users/{user_id}")
+def delete_user(user_id: int):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM nolandai_trading.users WHERE id = %s RETURNING id;", (user_id,))
+        deleted_id = cur.fetchone()
+        if not deleted_id:
+            raise HTTPException(status_code=404, detail="User not found")
+        conn.commit()
+        return {"message": f"User {user_id} deleted successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database delete error: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
 
 if __name__ == "__main__":
-    bot.run(DISCORD_BOT_TOKEN)
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
