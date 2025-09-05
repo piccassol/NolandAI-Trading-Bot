@@ -28,7 +28,7 @@ def get_db_connection():
         print(f"Database connection error: {e}")  # Debugging output
         raise HTTPException(status_code=500, detail=f"Database connection error: {str(e)}")
 
-# ✅ Test database connection
+# Test database connection
 @app.get("/db-test")
 def db_test():
     try:
@@ -41,7 +41,7 @@ def db_test():
     except Exception as e:
         return {"error": f"Database test failed: {str(e)}"}
 
-# ✅ Create users table (runs on startup)
+# Create users table (runs on startup)
 def create_users_table():
     conn = get_db_connection()
     cur = conn.cursor()
@@ -64,7 +64,7 @@ def create_users_table():
 def startup():
     create_users_table()
 
-# ✅ Get all users
+# Get all users
 @app.get("/users")
 def get_users():
     conn = get_db_connection()
@@ -80,7 +80,7 @@ def get_users():
         cur.close()
         conn.close()
 
-# ✅ Create a user
+# Create a user
 @app.post("/users")
 def create_user(username: str, balance: float = 0.0):
     conn = get_db_connection()
@@ -100,7 +100,7 @@ def create_user(username: str, balance: float = 0.0):
         cur.close()
         conn.close()
 
-# ✅ Delete a user
+# Delete a user
 @app.delete("/users/{user_id}")
 def delete_user(user_id: int):
     conn = get_db_connection()
@@ -119,12 +119,12 @@ def delete_user(user_id: int):
         cur.close()
         conn.close()
 
-# ✅ Root endpoint for testing Render deployment
+# Root endpoint for testing Render deployment
 @app.get("/")
 def home():
     return {"message": "FastAPI is running on Render!"}
 
-# ✅ Run FastAPI server (with dynamic Render port)
+# Run FastAPI server (with dynamic Render port)
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))  # Render provides PORT env variable
     uvicorn.run(app, host="0.0.0.0", port=port, reload=True)
