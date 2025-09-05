@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = "http://your-backend-ip:8000";  // Replace with your backend URL
+const API_URL = "https://nolandai.onrender.com";  // Your Render backend URL
 
 export const getTokenPrice = async (tokenAddress) => {
   const res = await axios.get(`${API_URL}/prices/${tokenAddress}`);
